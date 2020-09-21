@@ -38,7 +38,8 @@ abstract class ApolloDownloadSchemaTask : DefaultTask() {
         schema = schema,
         headers = header.toMap(),
         connectTimeoutSeconds = System.getProperty("okHttp.connectTimeout", "600").toLong(),
-        readTimeoutSeconds = System.getProperty("okHttp.readTimeout", "600").toLong()
+        readTimeoutSeconds = System.getProperty("okHttp.readTimeout", "600").toLong(),
+        introspectionQuery = IntrospectionQueryBuilder.buildForEndpoint()
     )
   }
 

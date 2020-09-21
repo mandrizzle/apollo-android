@@ -1,18 +1,15 @@
 package com.apollographql.apollo.gradle.internal
 
-import com.apollographql.apollo.gradle.api.CompilationUnit
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.gradle.api.DefaultTask
 import org.gradle.api.NamedDomainObjectContainer
-import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
+import org.jetbrains.kotlin.gradle.utils.`is`
 import java.io.File
 
 /**
@@ -23,6 +20,11 @@ abstract class ApolloDownloadSchemaCliTask : DefaultTask() {
   @get:Input
   @get:Option(option = "endpoint", description = "url of the GraphQL endpoint")
   abstract val endpoint: Property<String>
+
+  @get:Optional
+  @get:Input
+  @get:Option(option = "key", description = "The API key to use for authentication to Apollo Studio")
+  abstract val key: Property<String>
 
   @get:Input
   @get:Optional
@@ -92,8 +94,25 @@ abstract class ApolloDownloadSchemaCliTask : DefaultTask() {
       }
       else -> compilationUnit.service.introspection?.endpointUrl?.get()
     }
-    check(endpointUrl != null) {
-      "Specify the endpoint either with --endpoint or the introspection {} block"
+
+    val keyProp = project.findProperty("com.apollographql.apollo.key") as? String
+    val key = when {
+      key.isPresent -> key.get()
+      keyProp != null -> {
+        logger.lifecycle("Using the com.apollographql.apollo.key property is deprecated. Use --key instead.")
+        keyProp
+      }
+      else -> compilationUnit.service.introspection?.endpointUrl?.get()
+    }
+    check(endpointUrl != null || key != null) {
+      """
+        Cannot find a way to download your schema. Please specify either:
+        From the command line:
+          * --endpoint
+          * --key
+        Or from your build.gradle[.kts] files:  
+          * introspection { endpoint.set(...) }
+      """.trimIndent()
     }
 
     val schemaProp = project.findProperty("com.apollographql.apollo.schema") as? String
@@ -117,7 +136,10 @@ abstract class ApolloDownloadSchemaCliTask : DefaultTask() {
 
     val queryParamsProp = project.findProperty("com.apollographql.apollo.query_params") as? String
     if (queryParamsProp != null) {
-logger.lifecycle("Using the com.apollographql.apollo.query_params property is deprecated. Add parameters to the endpoint instead.")
+      logger.lifecycle("Using the com.apollographql.apollo.query_params property is deprecated. Add parameters to the endpoint instead.")
+      check(endpointUrl != null) {
+        "When using --key, query params are not needed"
+      }
       endpointUrl = endpointUrl.toHttpUrl().newBuilder()
           .apply {
             ApolloPlugin.toMap(queryParamsProp).entries.forEach {
@@ -128,13 +150,33 @@ logger.lifecycle("Using the com.apollographql.apollo.query_params property is de
           .toString()
     }
 
-    SchemaDownloader.download(
-        endpoint = endpointUrl,
-        schema = schemaFile,
-        headers = headers,
-        connectTimeoutSeconds = System.getProperty("okHttp.connectTimeout", "600").toLong(),
-        readTimeoutSeconds = System.getProperty("okHttp.readTimeout", "600").toLong()
-    )
+    if (endpointUrl != null) {
+      SchemaDownloader.download(
+          endpoint = endpointUrl,
+          schema = schemaFile,
+          headers = headers,
+          connectTimeoutSeconds = System.getProperty("okHttp.connectTimeout", "600").toLong(),
+          readTimeoutSeconds = System.getProperty("okHttp.readTimeout", "600").toLong(),
+          introspectionQuery = IntrospectionQueryBuilder.buildForEndpoint()
+      )
+    } else {
+      val service = try {
+        key!!.split(":")[1]
+      } catch (e: Exception) {
+        throw IllegalArgumentException("Cannot parse key '$key'. Keys are expected to look like service:${'$'}{service}")
+      }
+      check (headers.isEmpty()) {
+        "Apollo GraphQL: headers are not used for studio download"
+      }
+      SchemaDownloader.download(
+          endpoint = "https://engine-graphql.apollographql.com/api/graphql",
+          schema = schemaFile,
+          headers = mapOf("x-api-key" to key),
+          connectTimeoutSeconds = System.getProperty("okHttp.connectTimeout", "600").toLong(),
+          readTimeoutSeconds = System.getProperty("okHttp.readTimeout", "600").toLong(),
+          introspectionQuery = IntrospectionQueryBuilder.buildForStudio(service = service, tag = "current")
+      )
+    }
   }
 
   private fun List<String>.toMap(): Map<String, String> {
