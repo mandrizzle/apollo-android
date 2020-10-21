@@ -8,7 +8,7 @@ import java.io.IOException
 internal class DocumentParseException(
     message: String,
     sourceLocation: SourceLocation,
-    filePath: String
+    filePath: String?
 ) : RuntimeException(preview(
     message = message,
     sourceLocation = sourceLocation,
@@ -40,15 +40,20 @@ internal class DocumentParseException(
         filePath = filePath
     )
 
-    private fun preview(message: String, sourceLocation: SourceLocation, filePath: String): String {
+    private fun preview(message: String, sourceLocation: SourceLocation, filePath: String?): String {
+      if (sourceLocation == SourceLocation.UNKNOWN || filePath == null) {
+        return "\nFailed to parse GraphQL file $filePath:\n$message".let {
+          if (sourceLocation != SourceLocation.UNKNOWN)
+            it + sourceLocation.toString()
+          else
+            it
+        }
+      }
+
       val document = try {
         File(filePath).readText()
       } catch (e: IOException) {
         throw RuntimeException("Failed to read GraphQL file `$this`", e)
-      }
-
-      if (sourceLocation == SourceLocation.UNKNOWN) {
-        return "\nFailed to parse GraphQL file $filePath:\n$message"
       }
 
       val documentLines = document.lines()

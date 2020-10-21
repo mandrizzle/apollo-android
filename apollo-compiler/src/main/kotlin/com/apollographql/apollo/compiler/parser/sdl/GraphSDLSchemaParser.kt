@@ -48,7 +48,7 @@ object GraphSDLSchemaParser {
             ) {
               throw DocumentParseException(
                   message = "Unsupported token `${(offendingSymbol as? Token)?.text ?: offendingSymbol.toString()}`",
-                  filePath = absolutePath,
+                  filePath = null,
                   sourceLocation = SourceLocation(
                       line = line,
                       position = position
