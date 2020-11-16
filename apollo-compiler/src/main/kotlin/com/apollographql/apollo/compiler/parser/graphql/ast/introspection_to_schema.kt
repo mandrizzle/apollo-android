@@ -1,7 +1,5 @@
 package com.apollographql.apollo.compiler.parser.graphql.ast
 
-import com.apollographql.apollo.compiler.parser.antlr.GraphQLParser
-import com.apollographql.apollo.compiler.parser.error.ParseException
 import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema
 
 private class GQLDocumentBuilder(private val introspectionSchema: IntrospectionSchema) {
@@ -18,7 +16,8 @@ private class GQLDocumentBuilder(private val introspectionSchema: IntrospectionS
               is IntrospectionSchema.Type.InputObject -> it.toGQLInputObjectTypeDefinition()
               is IntrospectionSchema.Type.Scalar -> it.toGQLScalarTypeDefinition()
             }
-          } + schemaDefinition()
+          } + schemaDefinition(),
+          filePath = null
       )
     }
   }
@@ -28,7 +27,7 @@ private class GQLDocumentBuilder(private val introspectionSchema: IntrospectionS
         description = description,
         name = name,
         directives = emptyList(),
-        fields = fields?.map { it.toGQLFieldDefinition() } ?: throw ParseException("Object '$name' did not define any field"),
+        fields = fields?.map { it.toGQLFieldDefinition() } ?: throw ConversionException("Object '$name' did not define any field"),
         implementsInterfaces = findInterfacesImplementedBy(name)
     )
   }
@@ -64,7 +63,7 @@ private class GQLDocumentBuilder(private val introspectionSchema: IntrospectionS
     return GQLInterfaceTypeDefinition(
         name = name,
         description = description,
-        fields = fields?.map { it.toGQLFieldDefinition() } ?: throw ParseException("interface '$name' did not define any field"),
+        fields = fields?.map { it.toGQLFieldDefinition() } ?: throw ConversionException("interface '$name' did not define any field"),
         implementsInterfaces = emptyList(), // TODO
         directives = emptyList()
     )
@@ -104,7 +103,7 @@ private class GQLDocumentBuilder(private val introspectionSchema: IntrospectionS
       })
       this is List<*> -> GQLListValue(values = map { it.toGQLValue() })
       // TODO: variables?
-      else -> throw ParseException("cannot convert $this to a GQLValue")
+      else -> throw ConversionException("cannot convert $this to a GQLValue")
     }
   }
 
@@ -115,9 +114,9 @@ private class GQLDocumentBuilder(private val introspectionSchema: IntrospectionS
     return listOf(
         GQLDirective(
             name = "deprecated",
-            arguments = listOf(
+            arguments = GQLArguments(listOf(
                 GQLArgument(name = "reason", value = GQLStringValue(value = deprecationReason))
-            )
+            ))
         )
     )
   }
@@ -126,22 +125,22 @@ private class GQLDocumentBuilder(private val introspectionSchema: IntrospectionS
     return GQLUnionTypeDefinition(
         name = name,
         description = "",
-        memberTypes = possibleTypes?.map { it.toGQLNamedType() } ?: throw ParseException("Union '$name' must have members"),
+        memberTypes = possibleTypes?.map { it.toGQLNamedType() } ?: throw ConversionException("Union '$name' must have members"),
         directives = emptyList(),
     )
   }
 
   private fun IntrospectionSchema.TypeRef.toGQLNamedType(): GQLNamedType {
-    return toGQLType() as? GQLNamedType ?: throw ParseException("expected a NamedType")
+    return toGQLType() as? GQLNamedType ?: throw ConversionException("expected a NamedType")
   }
 
   private fun IntrospectionSchema.TypeRef.toGQLType(): GQLType {
     return when (this.kind) {
       IntrospectionSchema.Kind.NON_NULL -> GQLNonNullType(
-          type = ofType?.toGQLType() ?: throw ParseException("ofType must not be null for non null types")
+          type = ofType?.toGQLType() ?: throw ConversionException("ofType must not be null for non null types")
       )
       IntrospectionSchema.Kind.LIST -> GQLListType(
-          type = ofType?.toGQLType() ?: throw ParseException("ofType must not be null for list types")
+          type = ofType?.toGQLType() ?: throw ConversionException("ofType must not be null for list types")
       )
       else -> GQLNamedType(
           name = name!!
@@ -210,7 +209,10 @@ private class GQLDocumentBuilder(private val introspectionSchema: IntrospectionS
   }
 }
 
-fun IntrospectionSchema.toDocument(): GQLDocument = GQLDocumentBuilder(this).toGQLDocument()
+private fun IntrospectionSchema.toGQLDocument(): GQLDocument = GQLDocumentBuilder(this).toGQLDocument()
 
+fun IntrospectionSchema.toSchema(): Schema = toGQLDocument()
+    .withBuiltinTypes()
+    .toSchema()
 
 

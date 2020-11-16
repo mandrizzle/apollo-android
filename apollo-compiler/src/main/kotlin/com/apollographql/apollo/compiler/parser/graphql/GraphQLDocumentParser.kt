@@ -20,8 +20,6 @@ import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchem
 import com.apollographql.apollo.compiler.parser.introspection.asGraphQLType
 import com.apollographql.apollo.compiler.parser.introspection.isAssignableFrom
 import com.apollographql.apollo.compiler.parser.introspection.possibleTypes
-import com.apollographql.apollo.compiler.parser.introspection.resolveType
-import com.apollographql.apollo.compiler.parser.introspection.rootTypeForOperationType
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream

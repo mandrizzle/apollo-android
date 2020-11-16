@@ -41,16 +41,15 @@ internal class DocumentParseException(
     )
 
     private fun preview(message: String, sourceLocation: SourceLocation, filePath: String): String {
+      if (sourceLocation == SourceLocation.UNKNOWN) {
+        return "\nFailed to parse GraphQL file $filePath:\n$message"
+      }
+
       val document = try {
         File(filePath).readText()
       } catch (e: IOException) {
         throw RuntimeException("Failed to read GraphQL file `$this`", e)
       }
-
-      if (sourceLocation == SourceLocation.UNKNOWN) {
-        return "\nFailed to parse GraphQL file $filePath:\n$message"
-      }
-
       val documentLines = document.lines()
       return "\nFailed to parse GraphQL file $filePath ${sourceLocation}\n$message" +
           "\n----------------------------------------------------\n" +

@@ -2,8 +2,7 @@ package com.apollographql.apollo.compiler
 
 import com.apollographql.apollo.compiler.parser.error.DocumentParseException
 import com.apollographql.apollo.compiler.parser.error.ParseException
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLDocument
-import com.apollographql.apollo.compiler.parser.graphql.ast.fromFile
+import com.apollographql.apollo.compiler.parser.graphql.ast.GraphQLParser
 import com.google.common.truth.Truth.assertThat
 import org.junit.Assert.fail
 import org.junit.Test
@@ -13,12 +12,12 @@ import java.io.File
 
 @Suppress("UNUSED_PARAMETER")
 @RunWith(Parameterized::class)
-class SDLValidationTest(name: String, private val sdlFile: File) {
+class SchemaValidationTest(name: String, private val sdlFile: File) {
 
   @Test
   fun testValidation() {
     try {
-      GQLDocument.fromFile(sdlFile)
+      GraphQLParser.parseSchema(sdlFile)
       fail("parse expected to fail but was successful")
     } catch (e: Exception) {
       if (e is DocumentParseException || e is ParseException) {

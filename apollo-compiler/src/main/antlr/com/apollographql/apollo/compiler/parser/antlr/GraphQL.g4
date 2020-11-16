@@ -199,8 +199,7 @@ selectionSet
   ;
 
 description
-  : STRING
-  | BLOCK_STRING
+  : stringValue
   ;
 
 selection

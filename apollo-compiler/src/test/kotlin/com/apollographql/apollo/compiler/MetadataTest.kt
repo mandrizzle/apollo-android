@@ -138,7 +138,6 @@ class MetadataTest {
       generateKotlinModels = true,
       metadataOutputFile = rootMetadataFile,
       generateMetadata = true,
-      rootProjectDir = folder
     )
     GraphQLCompiler().write(rootArgs)
 
@@ -150,7 +149,6 @@ class MetadataTest {
       outputDir = leafSourcesDir,
       generateKotlinModels = true,
       metadataOutputFile = leafMetadataFile,
-      rootProjectDir = folder
     )
     GraphQLCompiler().write(leafArgs)
 
@@ -192,11 +190,7 @@ class MetadataTest {
       Truth.assertThat(actualMessage).isEqualTo(expectedMessage)
     }
 
-    val apolloMetadata = ApolloMetadata.readFrom(rootMetadataFile)!!
-    // Make sure the metadata does not contain absolute paths
-    apolloMetadata.fragments.forEach {
-      Truth.assertThat(it.filePath).isEqualTo("root.graphql")
-    }
+    val apolloMetadata = ApolloMetadata.readFrom(rootMetadataFile)
 
     // Nothing is generated
     leafSourcesDir.assertContents()

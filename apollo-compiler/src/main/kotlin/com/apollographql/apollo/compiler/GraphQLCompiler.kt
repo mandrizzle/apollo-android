@@ -12,14 +12,15 @@ import com.apollographql.apollo.compiler.operationoutput.toJson
 import com.apollographql.apollo.compiler.parser.error.DocumentParseException
 import com.apollographql.apollo.compiler.parser.error.ParseException
 import com.apollographql.apollo.compiler.parser.graphql.DocumentParseResult
-import com.apollographql.apollo.compiler.parser.graphql.GraphQLDocumentParser
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLDocument
-import com.apollographql.apollo.compiler.parser.graphql.ast.fromFile
+import com.apollographql.apollo.compiler.parser.graphql.ast.GQLFragmentDefinition
+import com.apollographql.apollo.compiler.parser.graphql.ast.GraphQLParser
+import com.apollographql.apollo.compiler.parser.graphql.ast.Issue
+import com.apollographql.apollo.compiler.parser.graphql.ast.Schema
+import com.apollographql.apollo.compiler.parser.graphql.ast.SourceAwareException
+import com.apollographql.apollo.compiler.parser.graphql.ast.toIntrospectionSchema
+import com.apollographql.apollo.compiler.parser.graphql.ast.toSchema
 import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema
-import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema.Companion.toIntrospectionSchema
-import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema.Companion.wrap
 import com.squareup.kotlinpoet.asClassName
-import toIntrospectionSchema
 import java.io.File
 
 class GraphQLCompiler(val logger: Logger = NoOpLogger) {
@@ -33,9 +34,9 @@ class GraphQLCompiler(val logger: Logger = NoOpLogger) {
     args.outputDir.mkdirs()
 
     val roots = Roots(args.rootFolders)
-    val metadata = collectMetadata(args.metadata, args.rootProjectDir)
+    val metadata = collectMetadata(args.metadata)
 
-    val (introspectionSchema, schemaPackageName) = getSchemaInfo(roots, args.rootPackageName, args.schemaFile, metadata)
+    val (schema, schemaPackageName) = getSchemaInfo(roots, args.rootPackageName, args.schemaFile, metadata)
 
     val generateKotlinModels = metadata?.generateKotlinModels ?: args.generateKotlinModels
     val userCustomTypesMap = metadata?.customTypesMap ?: args.customTypeMap
@@ -45,33 +46,47 @@ class GraphQLCompiler(val logger: Logger = NoOpLogger) {
         rootPackageName = args.rootPackageName
     )
 
-    val files = args.graphqlFiles
+    val (documents, issues) = GraphQLParser.parseExecutables(
+        args.graphqlFiles,
+        schema,
+        metadata?.fragments ?: emptyList()
+    )
 
-    val parseResult = GraphQLDocumentParser(
-        schema = introspectionSchema,
-        packageNameProvider = packageNameProvider
-    ).parse(files)
+    val (errors, warnings) = issues.partition { it.severity == Issue.Severity.ERROR }
+
+    val firstError = errors.firstOrNull()
+    if (firstError != null) {
+      throw SourceAwareException(
+          message = firstError.message,
+          sourceLocation = firstError.sourceLocation,
+      )
+    }
 
     if (args.warnOnDeprecatedUsages) {
-      val deprecatedUsages = parseResult.collectDeprecatedUsages()
-      deprecatedUsages.forEach {
+      warnings.forEach {
         // antlr is 0-indexed but IntelliJ is 1-indexed. Add 1 so that clicking the link will land on the correct location
         val column = it.sourceLocation.position + 1
         // Using this format, IntelliJ will parse the warning and display it in the 'run' panel
-        logger.warning("w: ${it.filePath}:${it.sourceLocation.line}:${column}: ApolloGraphQL: Use of deprecated field '${it.field.fieldName}'")
+        // XXX: uniformize with error handling above
+        logger.warning("w: ${it.sourceLocation.filePath}:${it.sourceLocation.line}:${column}: ApolloGraphQL: ${it.message}")
       }
-      if (args.failOnWarnings && deprecatedUsages.isNotEmpty()) {
+      if (args.failOnWarnings && warnings.isNotEmpty()) {
         throw IllegalStateException("ApolloGraphQL: Warnings found and 'failOnWarnings' is true, aborting.")
       }
     }
 
     val ir = IRBuilder(
-        schema = introspectionSchema,
+        schema = schema,
         schemaPackageName = schemaPackageName,
         incomingMetadata = metadata,
         alwaysGenerateTypesMatching = args.alwaysGenerateTypesMatching,
-        generateMetadata = args.generateMetadata
-    ).build(parseResult)
+        generateMetadata = args.generateMetadata,
+        packageNameProvider = packageNameProvider
+    ).build(documents)
+
+    if (args.dumpIR) {
+      ir.toJson(File(args.outputDir, "ir.json"))
+    }
 
     val operationOutput = ir.operations.map {
       OperationDescriptor(
@@ -94,6 +109,8 @@ class GraphQLCompiler(val logger: Logger = NoOpLogger) {
       args.operationOutputFile.writeText(operationOutput.toJson("  "))
     }
 
+    // TODO: use another schema for codegen than introspection schema
+    val introspectionSchema = schema.toIntrospectionSchema()
     val customTypeMap = (introspectionSchema.types.values.filter {
       it is IntrospectionSchema.Type.Scalar && ScalarType.forName(it.name) == null
     }.map { it.name } + ScalarType.ID.name)
@@ -113,21 +130,15 @@ class GraphQLCompiler(val logger: Logger = NoOpLogger) {
     args.metadataOutputFile.parentFile.mkdirs()
     if (args.generateMetadata) {
       val outgoingMetadata = ApolloMetadata(
-          schema = if (metadata == null) introspectionSchema.wrap() else null,
+          schema = if (metadata == null) schema else null,
           schemaPackageName = schemaPackageName,
           moduleName = args.moduleName,
           types = ir.enumsToGenerate + ir.inputObjectsToGenerate,
-          fragments = ir.fragments.filter { ir.fragmentsToGenerate.contains(it.fragmentName) },
+          fragments = documents.flatMap { it.definitions.filterIsInstance<GQLFragmentDefinition>() },
           generateKotlinModels = generateKotlinModels,
           customTypesMap = args.customTypeMap,
           pluginVersion = VERSION
-      ).let {
-        if (args.rootProjectDir != null) {
-          it.withRelativeFragments(args.rootProjectDir)
-        } else {
-          it
-        }
-      }
+      )
       outgoingMetadata.writeTo(args.metadataOutputFile)
     } else {
       // write a dummy metadata because the file is required as part as the `assemble` target
@@ -189,19 +200,13 @@ class GraphQLCompiler(val logger: Logger = NoOpLogger) {
 
   companion object {
 
-    private fun collectMetadata(metadata: List<File>, rootProjectDir: File?): ApolloMetadata? {
+    private fun collectMetadata(metadata: List<File>): ApolloMetadata? {
       return metadata.mapNotNull {
-        ApolloMetadata.readFrom(it)?.let {
-          if (rootProjectDir != null) {
-            it.withResolvedFragments(rootProjectDir)
-          } else {
-            it
-          }
-        }
+        ApolloMetadata.readFrom(it)
       }.merge()
     }
 
-    private data class SchemaInfo(val introspectionSchema: IntrospectionSchema, val schemaPackageName: String)
+    private data class SchemaInfo(val schema: Schema, val schemaPackageName: String)
 
     private fun getSchemaInfo(roots: Roots, rootPackageName: String, schemaFile: File?, metadata: ApolloMetadata?): SchemaInfo {
       check(schemaFile != null || metadata != null) {
@@ -213,11 +218,11 @@ class GraphQLCompiler(val logger: Logger = NoOpLogger) {
       }
 
       if (schemaFile != null) {
-        val introspectionSchema = if (schemaFile.extension == "json") {
-          IntrospectionSchema(schemaFile)
+        val schema = if (schemaFile.extension == "json") {
+          IntrospectionSchema(schemaFile).toSchema()
         } else {
           try {
-            GQLDocument.fromFile(schemaFile).toIntrospectionSchema()
+            GraphQLParser.parseSchema(schemaFile)
           } catch (e: ParseException) {
             throw DocumentParseException(e, schemaFile.absolutePath)
           }
@@ -230,9 +235,9 @@ class GraphQLCompiler(val logger: Logger = NoOpLogger) {
           ""
         }
         val schemaPackageName = "$rootPackageName.$packageName".removePrefix(".").removeSuffix(".")
-        return SchemaInfo(introspectionSchema, schemaPackageName)
+        return SchemaInfo(schema, schemaPackageName)
       } else if (metadata != null) {
-        return SchemaInfo(metadata.schema!!.__schema.toIntrospectionSchema(), metadata.schemaPackageName!!)
+        return SchemaInfo(metadata.schema!!, metadata.schemaPackageName!!)
       } else {
         throw IllegalStateException("There should at least be metadata or schemaFile")
       }
@@ -278,14 +283,6 @@ class GraphQLCompiler(val logger: Logger = NoOpLogger) {
        */
       val moduleName: String = "?",
       /**
-       * Optional rootProjectDir. If it exists:
-       * - when writing metadata, the compiler will output relative path to rootProjectDir
-       * - when reading metadata, the compiler will lookup the actual file
-       * This allows to lookup the real fragment file if all compilation units belong to the same project
-       * and output nicer error messages
-       */
-      val rootProjectDir: File? = null,
-      /**
        * The file where to write the metadata
        */
       val metadataOutputFile: File,
@@ -306,6 +303,7 @@ class GraphQLCompiler(val logger: Logger = NoOpLogger) {
        * the OperationOutputGenerator used to generate operation Ids
        */
       val operationOutputGenerator: OperationOutputGenerator = OperationOutputGenerator.DefaultOperationOuputGenerator(OperationIdGenerator.Sha256()),
+      val dumpIR: Boolean = false,
 
       //========== global codegen options ============
 

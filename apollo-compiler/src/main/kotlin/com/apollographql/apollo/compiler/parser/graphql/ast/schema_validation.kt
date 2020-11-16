@@ -1,7 +1,5 @@
 package com.apollographql.apollo.compiler.parser.graphql.ast
 
-import com.apollographql.apollo.compiler.parser.error.ParseException
-
 fun GQLDocument.validateAsSchema(): GQLDocument {
   validateNotExecutable()
   validateUniqueSchemaDefinition()
@@ -26,7 +24,7 @@ fun GQLDocument.mergeTypeExtensions(): GQLDocument {
           is GQLInputObjectTypeExtension -> acc.merge<GQLInputObjectTypeDefinition, GQLInputObjectTypeExtension>(extension) { it.merge(extension) }
           is GQLEnumTypeExtension -> acc.merge<GQLEnumTypeDefinition, GQLEnumTypeExtension>(extension) { it.merge(extension) }
           is GQLUnionTypeExtension -> acc.merge<GQLUnionTypeDefinition, GQLUnionTypeExtension>(extension) { it.merge(extension) }
-          else -> throw ParseException("Unrecognized type system extension", extension.sourceLocation)
+          else -> throw UnrecognizedAntlrRule("Unrecognized type system extension", extension.sourceLocation)
         }
       }
   )
@@ -35,7 +33,7 @@ fun GQLDocument.mergeTypeExtensions(): GQLDocument {
 private fun GQLDocument.validateInterfaces() {
   definitions.filterIsInstance<GQLInterfaceTypeDefinition>().forEach {
     if (it.fields.isEmpty()) {
-      throw ParseException("Interfaces must specify one or more fields", it.sourceLocation)
+      throw SchemaValidationException("Interfaces must specify one or more fields", it.sourceLocation)
     }
   }
 }
@@ -43,13 +41,13 @@ private fun GQLDocument.validateInterfaces() {
 private fun GQLDocument.validateObjects() {
   definitions.filterIsInstance<GQLObjectTypeDefinition>().forEach {o ->
     if (o.fields.isEmpty()) {
-      throw ParseException("Object must specify one or more fields", o.sourceLocation)
+      throw SchemaValidationException("Object must specify one or more fields", o.sourceLocation)
     }
 
     o.implementsInterfaces.forEach { implementsInterface ->
       val iface = definitions.firstOrNull { (it as? GQLInterfaceTypeDefinition)?.name == implementsInterface }
       if (iface == null) {
-        throw ParseException("Object '${o.name}' cannot implement non-interface '$implementsInterface'", o.sourceLocation)
+        throw SchemaValidationException("Object '${o.name}' cannot implement non-interface '$implementsInterface'", o.sourceLocation)
       }
     }
   }
@@ -101,7 +99,7 @@ private fun List<GQLDefinition>.mergeSchemaExtension(schemaExtension: GQLSchemaE
     }
   }
   if (!found) {
-    throw ParseException("Cannot apply schema extension on non existing schema definition", schemaExtension.sourceLocation)
+    throw SchemaValidationException("Cannot apply schema extension on non existing schema definition", schemaExtension.sourceLocation)
   }
   return definitions
 }
@@ -118,7 +116,7 @@ private inline fun <reified T, E> List<GQLDefinition>.merge(extension: E, merge:
   forEach {
     if (it is T && it.name == extension.name) {
       if (found) {
-        throw ParseException("Multiple '${extension.name}' types found while merging extensions. This is a bug, check validation code", extension.sourceLocation)
+        throw SchemaValidationException("Multiple '${extension.name}' types found while merging extensions. This is a bug, check validation code", extension.sourceLocation)
       }
       definitions.add(merge(it))
       found = true
@@ -127,7 +125,7 @@ private inline fun <reified T, E> List<GQLDefinition>.merge(extension: E, merge:
     }
   }
   if (!found) {
-    throw ParseException("Cannot find type named '${extension.name}' to apply extension", extension.sourceLocation)
+    throw SchemaValidationException("Cannot find type named '${extension.name}' to apply extension", extension.sourceLocation)
   }
   return definitions
 }
@@ -142,7 +140,7 @@ private fun GQLSchemaDefinition.merge(extension: GQLSchemaExtension): GQLSchemaD
 private inline fun <reified T> List<T>.mergeUniquesOrThrow(others: List<T>): List<T> where T : GQLNamed, T : GQLNode {
   return (this + others).apply {
     groupBy { it.name }.entries.firstOrNull { it.value.size > 1 }?.let {
-      throw ParseException("Cannot merge already existing node ${T::class.java.simpleName} `${it.key}`", it.value.first().sourceLocation)
+      throw SchemaValidationException("Cannot merge already existing node ${T::class.java.simpleName} `${it.key}`", it.value.first().sourceLocation)
     }
   }
 }
@@ -151,7 +149,7 @@ private inline fun <reified T> List<T>.mergeUniquesOrThrow(others: List<T>): Lis
 private inline fun <reified T : GQLNode> List<T>.mergeUniquesOrThrow(others: List<T>, name: (T) -> String): List<T> {
   return (this + others).apply {
     groupBy { name(it) }.entries.firstOrNull { it.value.size > 1 }?.let {
-      throw ParseException("Cannot merge already existing node ${T::class.java.simpleName} `${it.key}`", it.value.first().sourceLocation)
+      throw SchemaValidationException("Cannot merge already existing node ${T::class.java.simpleName} `${it.key}`", it.value.first().sourceLocation)
     }
   }
 }
@@ -159,7 +157,7 @@ private inline fun <reified T : GQLNode> List<T>.mergeUniquesOrThrow(others: Lis
 private fun GQLDocument.validateUniqueSchemaDefinition() {
   val schemaDefinitions = definitions.filter { it is GQLSchemaDefinition }
   if (schemaDefinitions.count() > 1) {
-    throw ParseException("multiple schema definitions found", schemaDefinitions.last().sourceLocation)
+    throw SchemaValidationException("multiple schema definitions found", schemaDefinitions.last().sourceLocation)
   }
 }
 
@@ -180,13 +178,13 @@ private fun GQLDocument.validateTypeNames() {
   // 3.3 All types within a GraphQL schema must have unique names
   if (conflicts.size > 0) {
     val conflict = conflicts.first()
-    throw ParseException("type '${conflict.name}' is defined multiple times", conflict.sourceLocation)
+    throw SchemaValidationException("type '${conflict.name}' is defined multiple times", conflict.sourceLocation)
   }
 
   // 3.3 All types and directives defined within a schema must not have a name which begins with "__"
   typeDefinitions.forEach { name, definition ->
     if (name.startsWith("__")) {
-      throw ParseException("names starting with '__' are reserved for introspection", definition.sourceLocation)
+      throw SchemaValidationException("names starting with '__' are reserved for introspection", definition.sourceLocation)
     }
   }
 }
@@ -209,13 +207,13 @@ private fun GQLDocument.validateDirectiveNames() {
   // 3.3 All directives within a GraphQL schema must have unique names.
   if (conflicts.size > 0) {
     val conflict = conflicts.first()
-    throw ParseException("directive '${conflict.name}' is defined multiple times", conflict.sourceLocation)
+    throw SchemaValidationException("directive '${conflict.name}' is defined multiple times", conflict.sourceLocation)
   }
 
   // 3.3 All types and directives defined within a schema must not have a name which begins with "__"
   directiveDefinitions.forEach { name, definition ->
     if (name.startsWith("__")) {
-      throw ParseException("names starting with '__' are reserved for introspection", definition.sourceLocation)
+      throw SchemaValidationException("names starting with '__' are reserved for introspection", definition.sourceLocation)
     }
   }
 }
@@ -227,7 +225,7 @@ private fun GQLDocument.validateDirectiveNames() {
 private fun GQLDocument.validateNotExecutable() {
   definitions.firstOrNull { it is GQLOperationDefinition || it is GQLFragmentDefinition }
       ?.let {
-        throw ParseException("Found an executable definition. Schemas should not contain operations or fragments.", it.sourceLocation)
+        throw SchemaValidationException("Found an executable definition. Schemas should not contain operations or fragments.", it.sourceLocation)
       }
 }
 

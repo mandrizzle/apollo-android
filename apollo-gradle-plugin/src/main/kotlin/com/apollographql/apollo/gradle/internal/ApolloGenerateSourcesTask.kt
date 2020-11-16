@@ -108,9 +108,6 @@ abstract class ApolloGenerateSourcesTask : DefaultTask() {
   @get:Input
   abstract val projectName: Property<String>
 
-  @get:Internal // The generated models do not depend on the location on the project
-  abstract val projectRootDir: DirectoryProperty
-
   @TaskAction
   fun taskAction() {
     val args = GraphQLCompiler.Arguments(
@@ -124,7 +121,6 @@ abstract class ApolloGenerateSourcesTask : DefaultTask() {
         generateMetadata = generateMetadata.getOrElse(false),
         alwaysGenerateTypesMatching = alwaysGenerateTypesMatching.orNull,
         moduleName = projectName.get(),
-        rootProjectDir = projectRootDir.get().asFile,
 
         operationOutputFile = operationOutputFile.asFile.orNull,
         operationOutputGenerator = operationOutputGenerator,

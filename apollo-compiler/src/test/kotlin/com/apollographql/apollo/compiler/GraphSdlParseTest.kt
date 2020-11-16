@@ -1,15 +1,14 @@
 package com.apollographql.apollo.compiler
 
 import com.apollographql.apollo.compiler.TestUtils.checkTestFixture
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLDocument
-import com.apollographql.apollo.compiler.parser.graphql.ast.fromFile
-import com.apollographql.apollo.compiler.parser.graphql.ast.toDocument
+import com.apollographql.apollo.compiler.parser.graphql.ast.GraphQLParser
 import com.apollographql.apollo.compiler.parser.graphql.ast.toFile
+import com.apollographql.apollo.compiler.parser.graphql.ast.toIntrospectionSchema
+import com.apollographql.apollo.compiler.parser.graphql.ast.toSchema
 import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema
 import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema.Companion.wrap
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import toIntrospectionSchema
 import java.io.File
 
 class GraphSdlParseTest() {
@@ -21,8 +20,8 @@ class GraphSdlParseTest() {
      * - leading/trailing spaces in descriptions
      * - defaultValue coercion
      */
-    val sdlSchema = GQLDocument.fromFile(File("src/test/sdl/schema.sdl"))
-    val actualSchema = sdlSchema.toIntrospectionSchema().normalize()
+    val schema = GraphQLParser.parseSchema(File("src/test/sdl/schema.sdl"))
+    val actualSchema = schema.toIntrospectionSchema().normalize()
     val expectedSchemaFile = File("src/test/sdl/schema.json")
     val actualSchemaFile = File("build/sdl-test/actual.json")
 
@@ -67,8 +66,8 @@ class GraphSdlParseTest() {
     val sdlFile = File("build/sdl-test/schema.sdl")
     sdlFile.parentFile.deleteRecursively()
     sdlFile.parentFile.mkdirs()
-    initialSchema.toDocument().toFile(sdlFile)
-    val finalSchema = GQLDocument.fromFile(sdlFile).toIntrospectionSchema().normalize()
+    initialSchema.toSchema().toDocument().toFile(sdlFile)
+    val finalSchema = GraphQLParser.parseSchema(sdlFile).toIntrospectionSchema().normalize()
 
     dumpSchemas(initialSchema, finalSchema)
     assertEquals(initialSchema, finalSchema)

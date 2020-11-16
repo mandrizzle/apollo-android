@@ -4,6 +4,9 @@ import com.apollographql.apollo.compiler.ir.IRBuilder
 import com.apollographql.apollo.compiler.parser.error.DocumentParseException
 import com.apollographql.apollo.compiler.parser.error.ParseException
 import com.apollographql.apollo.compiler.parser.graphql.GraphQLDocumentParser
+import com.apollographql.apollo.compiler.parser.graphql.ast.GQLDocument
+import com.apollographql.apollo.compiler.parser.graphql.ast.GraphQLParser
+import com.apollographql.apollo.compiler.parser.graphql.ast.toSchema
 import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema
 import com.google.common.truth.Truth.assertThat
 import org.junit.Assert.fail
@@ -14,20 +17,15 @@ import java.io.File
 
 @Suppress("UNUSED_PARAMETER")
 @RunWith(Parameterized::class)
-class GraphQLValidationTest(name: String, private val graphQLFile: File) {
+class OperationValidationTest(name: String, private val graphQLFile: File) {
 
   @Test
   fun testValidation() {
     val schemaFile = File("src/test/validation/schema.json")
-    val schema = IntrospectionSchema(schemaFile)
-    val packageNameProvider = DefaultPackageNameProvider(
-        roots = Roots(listOf(graphQLFile.parentFile)),
-        rootPackageName = ""
-    )
+    val schema = IntrospectionSchema(schemaFile).toSchema()
 
     try {
-      val documentParseResult = GraphQLDocumentParser(schema, packageNameProvider).parse(setOf(graphQLFile))
-      IRBuilder(schema, "", null, null, false).build(documentParseResult)
+      GraphQLParser.parseExecutable(graphQLFile, schema).getOrThrow()
       fail("parse expected to fail but was successful")
     } catch (e: Exception) {
       if (e is DocumentParseException || e is ParseException) {
@@ -47,6 +45,7 @@ class GraphQLValidationTest(name: String, private val graphQLFile: File) {
       return File("src/test/validation/graphql")
           .listFiles()!!
           .filter { it.extension == "graphql" }
+          .sortedBy { it.name }
           .map { arrayOf(it.nameWithoutExtension, it) }
     }
   }
