@@ -12,63 +12,6 @@
     "types": [
       {
         "kind": "INTERFACE",
-        "name": "Bar",
-        "description": "For testing fragment type coercion",
-        "fields": [
-          {
-            "name": "bar",
-            "description": "",
-            "isDeprecated": false,
-            "type": {
-              "kind": "NON_NULL",
-              "name": "",
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String"
-              }
-            },
-            "args": []
-          }
-        ],
-        "possibleTypes": [
-          {
-            "kind": "OBJECT",
-            "name": "BarObject"
-          },
-          {
-            "kind": "OBJECT",
-            "name": "FooBar"
-          }
-        ]
-      },
-      {
-        "kind": "OBJECT",
-        "name": "BarObject",
-        "description": "",
-        "fields": [
-          {
-            "name": "bar",
-            "description": "",
-            "isDeprecated": false,
-            "type": {
-              "kind": "NON_NULL",
-              "name": "",
-              "ofType": {
-                "kind": "SCALAR",
-                "name": "String"
-              }
-            },
-            "args": []
-          }
-        ]
-      },
-      {
-        "kind": "SCALAR",
-        "name": "Boolean",
-        "description": "The `Boolean` scalar type represents `true` or `false`."
-      },
-      {
-        "kind": "INTERFACE",
         "name": "Character",
         "description": "A character from the Star Wars universe",
         "fields": [
