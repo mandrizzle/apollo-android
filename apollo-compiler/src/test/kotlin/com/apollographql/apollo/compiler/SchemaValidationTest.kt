@@ -17,7 +17,7 @@ class SchemaValidationTest(name: String, private val sdlFile: File) {
   @Test
   fun testValidation() {
     try {
-      GraphQLParser.parseSchema(sdlFile)
+      GraphQLParser.parseSchema(sdlFile).orThrow()
       fail("parse expected to fail but was successful")
     } catch (e: Exception) {
       if (e is DocumentParseException || e is ParseException) {

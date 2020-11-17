@@ -22,7 +22,7 @@ class OperationValidationTest(name: String, private val graphQLFile: File) {
     val schema = IntrospectionSchema(schemaFile).toSchema()
 
     try {
-      GraphQLParser.parseExecutable(graphQLFile, schema).getOrThrow()
+      GraphQLParser.parseExecutable(graphQLFile, schema).orThrow()
       fail("parse expected to fail but was successful")
     } catch (e: Exception) {
       if (e is DocumentParseException || e is ParseException) {

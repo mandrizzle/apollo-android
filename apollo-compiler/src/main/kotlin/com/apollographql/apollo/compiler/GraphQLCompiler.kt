@@ -222,7 +222,7 @@ class GraphQLCompiler(val logger: Logger = NoOpLogger) {
           IntrospectionSchema(schemaFile).toSchema()
         } else {
           try {
-            GraphQLParser.parseSchema(schemaFile)
+            GraphQLParser.parseSchema(schemaFile).orThrow()
           } catch (e: ParseException) {
             throw DocumentParseException(e, schemaFile.absolutePath)
           }

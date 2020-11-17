@@ -20,7 +20,7 @@ class GraphSdlParseTest() {
      * - leading/trailing spaces in descriptions
      * - defaultValue coercion
      */
-    val schema = GraphQLParser.parseSchema(File("src/test/sdl/schema.sdl"))
+    val schema = GraphQLParser.parseSchema(File("src/test/sdl/schema.sdl")).orThrow()
     val actualSchema = schema.toIntrospectionSchema().normalize()
     val expectedSchemaFile = File("src/test/sdl/schema.json")
     val actualSchemaFile = File("build/sdl-test/actual.json")
@@ -67,7 +67,7 @@ class GraphSdlParseTest() {
     sdlFile.parentFile.deleteRecursively()
     sdlFile.parentFile.mkdirs()
     initialSchema.toSchema().toDocument().toFile(sdlFile)
-    val finalSchema = GraphQLParser.parseSchema(sdlFile).toIntrospectionSchema().normalize()
+    val finalSchema = GraphQLParser.parseSchema(sdlFile).orThrow().toIntrospectionSchema().normalize()
 
     dumpSchemas(initialSchema, finalSchema)
     assertEquals(initialSchema, finalSchema)

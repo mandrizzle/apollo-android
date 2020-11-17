@@ -148,7 +148,7 @@ private class SchemaHolder(
         name = name,
         sourceLocation = sourceLocation.toIR(),
         value = value.validateAndCoerce(type, schema, null)
-            .getOrThrow()
+            .orThrow()
             .toKotlinValue(false),
         type = type.pretty()
     )
@@ -203,7 +203,7 @@ private class SchemaHolder(
         name = name,
         description = description ?: "",
         defaultValue = defaultValue?.validateAndCoerce(type, schema, null)
-            ?.getOrThrow()
+            ?.orThrow()
             ?.toKotlinValue(true),
         type = type.pretty()
     )

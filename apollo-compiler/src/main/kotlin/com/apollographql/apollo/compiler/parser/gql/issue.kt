@@ -4,7 +4,7 @@ data class ParseResult<out T>(
     val value: T,
     val issues: List<Issue>
 ) {
-  fun getOrThrow(): T {
+  fun orThrow(): T {
     val firstError = issues.firstOrNull { it.severity == Issue.Severity.ERROR }
     if (firstError != null) {
       throw SourceAwareException(firstError.message, firstError.sourceLocation)

@@ -689,8 +689,67 @@ private class InputValueValidationScope(val schema: Schema) {
   }
 }
 
+private fun GQLDocument.checkSingleOperation(): List<Issue> {
+  val operations = definitions.filterIsInstance<GQLOperationDefinition>()
+  return when {
+    operations.isEmpty() -> listOf(Issue.ValidationError("No operation found", sourceLocation))
+    else -> emptyList()
+  }
+}
+
+internal fun List<GQLFragmentDefinition>.checkDuplicateFragments(): List<Issue> {
+  val filtered = mutableMapOf<String, GQLFragmentDefinition>()
+  val issues = mutableListOf<Issue>()
+
+  forEach {
+    val existing = filtered.putIfAbsent(it.name, it)
+    if (existing != null) {
+      issues.add(Issue.ValidationError(
+          message = "Fragment ${it.name} is already defined",
+          sourceLocation = it.sourceLocation,
+      ))
+    }
+  }
+  return issues
+}
+
+internal fun List<GQLOperationDefinition>.checkDuplicateOperations(): List<Issue> {
+  val filtered = mutableMapOf<String, GQLOperationDefinition>()
+  val issues = mutableListOf<Issue>()
+
+  forEach {
+    if (it.name == null) {
+      issues.add(Issue.ValidationError(
+          message = "Apollo does not support anonymous operations",
+          sourceLocation = it.sourceLocation,
+      ))
+      return@forEach
+    }
+    val existing = filtered.putIfAbsent(it.name, it)
+    if (existing != null) {
+      issues.add(Issue.ValidationError(
+          message = "Operation ${it.name} is already defined",
+          sourceLocation = it.sourceLocation,
+      ))
+    }
+  }
+  return issues
+}
+
+internal fun List<GQLDefinition>.checkDuplicates(): List<Issue> {
+  return filterIsInstance<GQLOperationDefinition>().checkDuplicateOperations() + filterIsInstance<GQLFragmentDefinition>().checkDuplicateFragments()
+}
+
 fun GQLOperationDefinition.validate(schema: Schema, fragments: Map<String, GQLFragmentDefinition>) = ExecutableDocumentValidator(schema, fragments).validateOperation(this)
 
 fun GQLFragmentDefinition.validate(schema: Schema, fragments: Map<String, GQLFragmentDefinition>) = ExecutableDocumentValidator(schema, fragments).validateFragment(this)
 
-fun GQLDocument.validateAsExecutable(schema: Schema, fragments: Map<String, GQLFragmentDefinition>) = ExecutableDocumentValidator(schema, fragments).validateDocument(this)
+fun GQLDocument.validateAsOperation(schema: Schema): List<Issue> {
+  val fragments = definitions.filterIsInstance<GQLFragmentDefinition>().associateBy { it.name }
+  val validationIssues = ExecutableDocumentValidator(schema, fragments).validateDocument(this)
+  val duplicateIssues = definitions.checkDuplicates()
+
+  val singleOperationIssues = checkSingleOperation()
+  // check for unused fragments
+  return validationIssues + duplicateIssues + singleOperationIssues
+}

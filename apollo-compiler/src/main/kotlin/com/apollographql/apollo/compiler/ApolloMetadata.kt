@@ -90,8 +90,8 @@ data class ApolloMetadata(
       val serializedMetadata = file.fromJson<JsonMetadata>()
       return with(serializedMetadata) {
         ApolloMetadata(
-            schema = schema?.let { GraphQLParser.parseSchema(it) },
-            fragments = GraphQLParser.parse(fragments).getOrThrow().definitions.map { it as GQLFragmentDefinition },
+            schema = schema?.let { GraphQLParser.parseSchema(it).orThrow() },
+            fragments = GraphQLParser.parseDocument(fragments).orThrow().definitions.map { it as GQLFragmentDefinition },
             types = types,
             schemaPackageName = schemaPackageName,
             moduleName = moduleName,
