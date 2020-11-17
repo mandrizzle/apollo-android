@@ -1,9 +1,9 @@
 package com.apollographql.apollo.compiler
 
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLFragmentDefinition
-import com.apollographql.apollo.compiler.parser.graphql.ast.GraphQLParser
-import com.apollographql.apollo.compiler.parser.graphql.ast.Schema
-import com.apollographql.apollo.compiler.parser.graphql.ast.toUtf8
+import com.apollographql.apollo.compiler.parser.gql.GQLFragmentDefinition
+import com.apollographql.apollo.compiler.parser.gql.GraphQLParser
+import com.apollographql.apollo.compiler.parser.gql.Schema
+import com.apollographql.apollo.compiler.parser.gql.toUtf8
 import com.squareup.moshi.JsonClass
 import java.io.File
 

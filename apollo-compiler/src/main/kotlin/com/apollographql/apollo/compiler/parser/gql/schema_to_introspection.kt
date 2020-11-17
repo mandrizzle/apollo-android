@@ -1,6 +1,5 @@
-package com.apollographql.apollo.compiler.parser.graphql.ast
+package com.apollographql.apollo.compiler.parser.gql
 
-import com.apollographql.apollo.compiler.parser.error.ParseException
 import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema
 
 private class IntrospectionSchemaBuilder(private val schema: Schema) {

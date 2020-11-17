@@ -1,9 +1,7 @@
 package com.apollographql.apollo.gradle.internal
 
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLDocument
-import com.apollographql.apollo.compiler.parser.graphql.ast.parseAsSchema
-import com.apollographql.apollo.compiler.parser.graphql.ast.toGQLDocument
-import com.apollographql.apollo.compiler.parser.graphql.ast.toUtf8
+import com.apollographql.apollo.compiler.parser.gql.GQLDocument
+import com.apollographql.apollo.compiler.parser.gql.parseAsSchema
 import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.Property

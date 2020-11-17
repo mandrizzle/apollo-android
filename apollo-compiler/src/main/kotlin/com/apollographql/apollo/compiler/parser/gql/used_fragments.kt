@@ -1,4 +1,4 @@
-package com.apollographql.apollo.compiler.parser.graphql.ast
+package com.apollographql.apollo.compiler.parser.gql
 
 /**
  * XXX: optimize to not visit the same fragment multiple times

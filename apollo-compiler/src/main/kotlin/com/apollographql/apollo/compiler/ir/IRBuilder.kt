@@ -2,17 +2,17 @@ package com.apollographql.apollo.compiler.ir
 
 import com.apollographql.apollo.compiler.ApolloMetadata
 import com.apollographql.apollo.compiler.PackageNameProvider
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLDocument
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLEnumTypeDefinition
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLFragmentDefinition
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLInputObjectTypeDefinition
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLOperationDefinition
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLScalarTypeDefinition
-import com.apollographql.apollo.compiler.parser.graphql.ast.Schema
-import com.apollographql.apollo.compiler.parser.graphql.ast.isBuiltIn
-import com.apollographql.apollo.compiler.parser.graphql.ast.toIR
-import com.apollographql.apollo.compiler.parser.graphql.ast.usedTypeNames
-import com.apollographql.apollo.compiler.parser.graphql.ast.withTypenameWhenNeeded
+import com.apollographql.apollo.compiler.parser.gql.GQLDocument
+import com.apollographql.apollo.compiler.parser.gql.GQLEnumTypeDefinition
+import com.apollographql.apollo.compiler.parser.gql.GQLFragmentDefinition
+import com.apollographql.apollo.compiler.parser.gql.GQLInputObjectTypeDefinition
+import com.apollographql.apollo.compiler.parser.gql.GQLOperationDefinition
+import com.apollographql.apollo.compiler.parser.gql.GQLScalarTypeDefinition
+import com.apollographql.apollo.compiler.parser.gql.Schema
+import com.apollographql.apollo.compiler.parser.gql.isBuiltIn
+import com.apollographql.apollo.compiler.parser.gql.toIR
+import com.apollographql.apollo.compiler.parser.gql.usedTypeNames
+import com.apollographql.apollo.compiler.parser.gql.withTypenameWhenNeeded
 
 class IRBuilder(private val schema: Schema,
                 private val schemaPackageName: String,

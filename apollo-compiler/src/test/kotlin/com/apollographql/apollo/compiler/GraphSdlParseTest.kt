@@ -1,10 +1,10 @@
 package com.apollographql.apollo.compiler
 
 import com.apollographql.apollo.compiler.TestUtils.checkTestFixture
-import com.apollographql.apollo.compiler.parser.graphql.ast.GraphQLParser
-import com.apollographql.apollo.compiler.parser.graphql.ast.toFile
-import com.apollographql.apollo.compiler.parser.graphql.ast.toIntrospectionSchema
-import com.apollographql.apollo.compiler.parser.graphql.ast.toSchema
+import com.apollographql.apollo.compiler.parser.gql.GraphQLParser
+import com.apollographql.apollo.compiler.parser.gql.toFile
+import com.apollographql.apollo.compiler.parser.gql.toIntrospectionSchema
+import com.apollographql.apollo.compiler.parser.gql.toSchema
 import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema
 import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema.Companion.wrap
 import org.junit.Assert.assertEquals

@@ -1,4 +1,4 @@
-package com.apollographql.apollo.compiler.parser.graphql.ast
+package com.apollographql.apollo.compiler.parser.gql
 
 fun GQLValue.toKotlinValue(constContext: Boolean): Any? {
   return when (this) {

@@ -1,8 +1,7 @@
-package com.apollographql.apollo.compiler.parser.graphql.ast
+package com.apollographql.apollo.compiler.parser.gql
 
 import com.apollographql.apollo.compiler.parser.antlr.GraphQLParser
 import org.antlr.v4.runtime.Token
-import org.antlr.v4.runtime.tree.TerminalNode
 
 private class AstBuilder(val filePath: String?) {
   private fun sourceLocation(token: Token) = SourceLocation(

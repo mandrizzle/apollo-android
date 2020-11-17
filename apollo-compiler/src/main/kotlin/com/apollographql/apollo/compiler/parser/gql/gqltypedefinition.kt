@@ -1,6 +1,4 @@
-package com.apollographql.apollo.compiler.parser.graphql.ast
-
-import com.apollographql.apollo.compiler.parser.error.ParseException
+package com.apollographql.apollo.compiler.parser.gql
 
 // 5.5.2.3 Fragment spread is possible
 internal fun GQLTypeDefinition.sharesPossibleTypesWith(other: GQLTypeDefinition, typeDefinitions: Map<String, GQLTypeDefinition>): Boolean {

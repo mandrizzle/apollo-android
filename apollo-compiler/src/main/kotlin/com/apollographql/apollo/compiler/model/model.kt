@@ -1,6 +1,6 @@
 package com.apollographql.apollo.compiler.model
 
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLTypeDefinition
+import com.apollographql.apollo.compiler.parser.gql.GQLTypeDefinition
 
 interface ModelNode {
   val children: List<ModelNode>

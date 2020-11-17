@@ -3,16 +3,22 @@
  *
  * This is all in one file so we can use sealed classes. Extensions are in gqlxyz.kt
  */
-package com.apollographql.apollo.compiler.parser.graphql.ast
+package com.apollographql.apollo.compiler.parser.gql
 
 import okio.BufferedSink
 
 /**
  * A node in the GraphQL AST.
  *
- * For simplicity, not all tokens are mapped to GQLNodes and simple tokens such as name or description are directly properties on their composite node.
+ * The structure of the different nodes matches closely the one of the GraphQL specification
+ * (https://spec.graphql.org/June2018/#sec-Appendix-Grammar-Summary.Document)
  *
- * Whitespace tokens are not mapped to GQLNodes so this AST will not be able to preserve formatting upon modification.
+ * See [GraphQLParser] for the different ways to get a [GQLDocument].
+ *
+ * Compared to the Antlr [com.apollographql.apollo.compiler.parser.antlr.GraphQLParser.DocumentContext], a GQLDocument
+ * is a lot simpler and allows for easy modifying a document (using .clone()) and outputing them to a [okio.BufferedSink].
+ *
+ * Whitespace tokens are not mapped to GQLNodes so some formating will be lost during modification
  */
 interface GQLNode {
   val sourceLocation: SourceLocation
@@ -24,27 +30,6 @@ interface GQLNode {
    */
   val children: List<GQLNode>
   fun write(bufferedSink: BufferedSink)
-}
-
-/**
- * depth first traversal
- */
-fun GQLNode.visit(block: (GQLNode) -> Unit) {
-  block(this)
-  children.forEach {
-    it.visit(block)
-  }
-}
-
-/**
- * depth first traversal
- */
-inline fun <reified T : GQLNode> GQLNode.visitIsInstance(block: (T) -> Unit) {
-  (this as? T)?.let { block(it) }
-
-  children.filterIsInstance<T>().forEach {
-    block(it)
-  }
 }
 
 interface GQLNamed {
@@ -61,6 +46,12 @@ interface GQLTypeExtension : GQLTypeSystemExtension, GQLNamed
 
 sealed class GQLSelection : GQLNode
 
+/**
+ * The top level node in a GraphQL document. This can be a schema document or an executable document
+ * (or something else if need be)
+ *
+ * See [GraphQLParser] for the different ways to get a [GQLDocument].
+ */
 data class GQLDocument(
     val definitions: List<GQLDefinition>,
     val filePath: String?
@@ -894,7 +885,6 @@ private fun <T : GQLNode> List<T>.join(bufferedSink: BufferedSink, separator: St
   bufferedSink.writeUtf8(postfix)
 }
 
-
 enum class GQLDirectiveLocation {
   QUERY,
   MUTATION,
@@ -916,4 +906,25 @@ enum class GQLDirectiveLocation {
   ENUM_VALUE,
   INPUT_OBJECT,
   INPUT_FIELD_DEFINITION,
+}
+
+/**
+ * depth first traversal
+ */
+fun GQLNode.visit(block: (GQLNode) -> Unit) {
+  block(this)
+  children.forEach {
+    it.visit(block)
+  }
+}
+
+/**
+ * depth first traversal
+ */
+inline fun <reified T : GQLNode> GQLNode.visitIsInstance(block: (T) -> Unit) {
+  (this as? T)?.let { block(it) }
+
+  children.filterIsInstance<T>().forEach {
+    block(it)
+  }
 }

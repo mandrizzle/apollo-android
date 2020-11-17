@@ -1,4 +1,4 @@
-package com.apollographql.apollo.compiler.parser.graphql.ast
+package com.apollographql.apollo.compiler.parser.gql
 
 fun GQLOperationDefinition.withTypenameWhenNeeded(schema: Schema): GQLOperationDefinition {
   val hasFragmentSpread = selectionSet.selections.filterIsInstance<GQLFragmentSpread>().isNotEmpty()

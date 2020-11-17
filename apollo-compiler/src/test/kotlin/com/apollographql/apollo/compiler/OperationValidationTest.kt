@@ -1,12 +1,9 @@
 package com.apollographql.apollo.compiler
 
-import com.apollographql.apollo.compiler.ir.IRBuilder
 import com.apollographql.apollo.compiler.parser.error.DocumentParseException
 import com.apollographql.apollo.compiler.parser.error.ParseException
-import com.apollographql.apollo.compiler.parser.graphql.GraphQLDocumentParser
-import com.apollographql.apollo.compiler.parser.graphql.ast.GQLDocument
-import com.apollographql.apollo.compiler.parser.graphql.ast.GraphQLParser
-import com.apollographql.apollo.compiler.parser.graphql.ast.toSchema
+import com.apollographql.apollo.compiler.parser.gql.GraphQLParser
+import com.apollographql.apollo.compiler.parser.gql.toSchema
 import com.apollographql.apollo.compiler.parser.introspection.IntrospectionSchema
 import com.google.common.truth.Truth.assertThat
 import org.junit.Assert.fail

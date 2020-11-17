@@ -1,4 +1,4 @@
-package com.apollographql.apollo.compiler.parser.graphql.ast
+package com.apollographql.apollo.compiler.parser.gql
 
 object GraphQLString {
   fun decodeSingleQuoted(string: String): String {

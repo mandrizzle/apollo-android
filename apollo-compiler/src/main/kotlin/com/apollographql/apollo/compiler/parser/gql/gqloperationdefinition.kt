@@ -1,4 +1,4 @@
-package com.apollographql.apollo.compiler.parser.graphql.ast
+package com.apollographql.apollo.compiler.parser.gql
 
 internal fun GQLOperationDefinition.rootTypeDefinition(schema: Schema) = when (operationType) {
   "query" -> schema.queryTypeDefinition
